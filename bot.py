@@ -5,6 +5,9 @@ token = "8912650382:AAFlhp_GOm" + \
         "LRGuAr_Ft3L2we4JRHxntvRpw"
 bot = telebot.TeleBot(token)
 
+# الآيدي الخاص بك كمشزف ومالك للبوت لقراءة جميع الهمسات
+ADMIN_ID = 6641182392
+
 whisper_data = {}        
 active_whispers = {}     
 
@@ -41,7 +44,6 @@ def start(message):
             bot.send_message(chat_id, f"💌 • اكتب همستك الشخصية الآن:")
         return
 
-    # رسالة البداية المرتبة مثل البوتات الكبيرة مع أزرار شفافة
     bot_username = bot.get_me().username
     markup = InlineKeyboardMarkup()
     markup.add(InlineKeyboardButton("➕ اضفني لمجموعتك", url=f"https://t.me/{bot_username}?startgroup=true"))
@@ -171,7 +173,7 @@ def read_whisper_callback(call):
     whisper_text = whisper_info['text']
     target_name = whisper_info['target_name']
     
-    if user_id == target_id or user_id == sender_id:
+    if user_id == target_id or user_id == sender_id or user_id == ADMIN_ID:
         bot.answer_callback_query(
             call.id,
             f"{whisper_text}\n\n- الصفحة 1 / 1 📄",
