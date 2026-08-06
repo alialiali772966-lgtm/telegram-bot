@@ -1,3 +1,4 @@
+import time
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
@@ -171,7 +172,6 @@ def read_whisper_callback(call):
     whisper_text = whisper_info['text']
     target_name = whisper_info['target_name']
     
-    # السماح للمرسل، أو المستقبل، أو أنت كمالك (ADMIN_ID) برؤية الهمسة
     if user_id == target_id or user_id == sender_id or user_id == ADMIN_ID:
         bot.answer_callback_query(
             call.id,
@@ -179,7 +179,6 @@ def read_whisper_callback(call):
             show_alert=True
         )
         
-        # إرسال إشعار القراءة فقط إذا فتحها الشخص المقصود (Target) فعلياً وليس المالك
         if user_id == target_id and not whisper_info['read_status']:
             whisper_info['read_status'] = True
             try:
@@ -198,4 +197,10 @@ def read_whisper_callback(call):
         )
 
 print("Bot is running perfectly...")
-bot.infinity_polling(skip_pending=True)
+while True:
+    try:
+        bot.infinity_polling(skip_pending=True, timeout=90, long_polling_timeout=90)
+    except Exception as e:
+        print(f"Error occurred: {e}")
+        time.sleep(5)
+
