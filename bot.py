@@ -3,11 +3,11 @@ import telebot
 from flask import Flask
 from threading import Thread
 
-# توكن البوت
-TOKEN = os.environ.get('BOT_TOKEN')
+# توكن بوت رينكس مباشرة
+TOKEN = "8912650382:AAF1hp_G0mLRGuAr_Ft3L2we4JRHxntvRpw"
 bot = telebot.TeleBot(TOKEN)
 
-# إعداد سيرفر الويب البسيط عشان رندر ما يعطي Timeout
+# إعداد سيرفر الويب عشان يظل شغال
 app = Flask('')
 
 @app.route('/')
@@ -15,7 +15,6 @@ def home():
     return "I am alive!"
 
 def run():
-    # استخدام البورت اللي يحدده رندر تلقائياً
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
 
@@ -25,7 +24,7 @@ def keep_alive():
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    bot.reply_to(message, "أهلاً بك في بوت الهمسات الذكي ✨")
+    bot.reply_to(message, "أهلاً بك في بوت رينكس للهمسات ✨")
 
 if __name__ == "__main__":
     keep_alive()
