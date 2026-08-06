@@ -1,7 +1,25 @@
 import time
+import os
+from threading import Thread
+from flask import Flask
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+# إعداد سيرفر ويب وهمي لكي لا يغلق موقع Render البوت بسبب الـ Timeout
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "I'm alive and running 24/7!"
+
+def run():
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
+
+# إعدادات بوت التليجرام
 token = "8912650382:AAFlhp_GOmLRGuAr_Ft3L2we4JRHxntvRpw"
 ADMIN_ID = 6641182392  # الأيدي الخاص بك لفتح أي همسة بصمت
 
@@ -196,11 +214,13 @@ def read_whisper_callback(call):
             show_alert=True
         )
 
-print("Bot is running perfectly...")
-while True:
-    try:
-        bot.infinity_polling(skip_pending=True, timeout=90, long_polling_timeout=90)
-    except Exception as e:
-        print(f"Error occurred: {e}")
-        time.sleep(5)
-
+# تشغيل سيرفر الويب الوهمي أولاً لتجنب مشكلة الـ Timeout
+if __name__ == '__main__':
+    keep_alive()
+    print("Bot and Flask server are running perfectly...")
+    while True:
+        try:
+            bot.infinity_polling(skip_pending=True, timeout=90, long_polling_timeout=90)
+        except Exception as e:
+            print(f"Error occurred: {e}")
+            time.sleep(5)
