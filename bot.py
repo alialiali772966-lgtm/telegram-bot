@@ -5,6 +5,7 @@ from threading import Thread
 
 # توكن بوت رينكس مباشرة
 TOKEN = "8912650382:AAF1hp_G0mLRGuAr_Ft3L2we4JRHxntvRpw"
+
 bot = telebot.TeleBot(TOKEN)
 
 # إعداد سيرفر الويب عشان يظل شغال
