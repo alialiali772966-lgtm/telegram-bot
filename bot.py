@@ -20,7 +20,7 @@ def keep_alive():
     t.start()
 
 # إعدادات بوت التليجرام
-token = "8912650382:AAFlhp_GOmLRGuAr_Ft3L2we4JRHxntvRpw"
+token = "8912650382:AAGxGtTJ6loePuTG3Dyt3f8Knhpa4HGDR4A
 ADMIN_ID = 6641182392  # الأيدي الخاص بك لفتح أي همسة بصمت
 
 bot = telebot.TeleBot(token)
