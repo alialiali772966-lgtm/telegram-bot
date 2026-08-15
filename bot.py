@@ -40,7 +40,7 @@ def send_welcome(message):
                 bot.send_message(message.chat.id, "❌ حدث خطأ أثناء فتح الهمسة.")
                 return
 
-    # الرسالة الترحيبية الاحترافية مثل الصورة الأولى
+    # الرسالة الترحيبية الاحترافية
     markup = InlineKeyboardMarkup()
     markup.add(InlineKeyboardButton("➕ اضفني لمجموعتك", url=f"https://t.me/{bot.get_me().username}?startgroup=true"))
     
@@ -79,6 +79,7 @@ def handle_private_messages(message):
         
         markup = InlineKeyboardMarkup()
         bot_username = bot.get_me().username
+        # الرابط هنا يرسل معرف الهمسة الصحيح تماماً
         markup.add(InlineKeyboardButton("👁️ اضغط هنا لقراءة الهمسة", url=f"https://t.me/{bot_username}?start=whisper_{whisper_id}"))
         
         target_mention = f"[{target_info['target_name']}](tg://user?id={target_id})"
@@ -126,7 +127,8 @@ def handle_group_messages(message):
     
     markup = InlineKeyboardMarkup()
     bot_username = bot.get_me().username
-    markup.add(InlineKeyboardButton("اهمس هنا ↗️", url=f"https://t.me/{bot_username}?start=whisper_ready"))
+    # تم تصحيح الرابط ليوجه المستخدم للخاص مباشرة بشكل صحيح
+    markup.add(InlineKeyboardButton("اهمس هنا ↗️", url=f"https://t.me/{bot_username}?start=whisper_start"))
     
     target_mention = f"[{target_user_name}](tg://user?id={target_user_id})"
     
@@ -136,7 +138,6 @@ def handle_group_messages(message):
         reply_markup=markup,
         parse_mode="Markdown"
     )
-    # إرسال رسالة توجيهية للخاص بالطلب
     try:
         bot.send_message(user_id, f"💌 • اكتب همستك لـ **{target_user_name}** الآن:", parse_mode="Markdown")
     except:
