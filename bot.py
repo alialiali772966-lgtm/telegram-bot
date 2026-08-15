@@ -4,8 +4,8 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 TOKEN = "8912650382:AAGxGtTJ6loePuTG3Dyt3f8Knhpa4HGDR4A"
 bot = telebot.TeleBot(TOKEN)
 
-# تخزين مؤقت لجلسات الهمس النشطة
-active_whispers = {}
+# تخزين الهمسات والجلسات النشطة
+database = {}
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
@@ -14,31 +14,46 @@ def handle_start(message):
     if " " in text:
         payload = text.split(" ", 1)[1]
         
-        # عند الضغط على زر "اهمس هنا" من المجموعة والانتقال للخاص
+        # 1. عند الضغط على "اهمس هنا" من المجموعة والذهاب للخاص
         if payload.startswith("whisper_"):
             target_name = payload.replace("whisper_", "")
-            active_whispers[message.from_user.id] = {
+            database[message.from_user.id] = {
                 'target_name': target_name,
-                'chat_id': message.chat.id
+                'chat_id': message.chat.id,
+                'step': 'waiting_for_text'
             }
             bot.reply_to(message, f"• 💌 • اكتب همستك لـ **{target_name}** الآن:", parse_mode="Markdown")
             return
             
-        # عند الضغط على زر "رؤية الهمسة"
+        # 3. عند الضغط على زر "رؤية الهمسة" في المجموعة
         elif payload.startswith("read_"):
             w_id = payload.replace("read_", "")
-            if w_id in active_whispers:
-                w = active_whispers[w_id]
+            if w_id in database:
+                item = database[w_id]
+                
+                # إرسال محتوى الهمسة للشخص اللي قرأها
                 bot.reply_to(
                     message,
-                    f"• تمت قراءة الهمسة .. بنجاح\n• بواسطة العضو المطلوب ✨\n- من قبل ← {w['sender_name']}♡\n\n💌 **النص:**\n{w['text']}",
+                    f"✨ **تمت قراءة الهمسة .. بنجاح**\n"
+                    f"• من قبل ← {item['sender_name']}♡\n"
+                    f"• إلى ← {item['target_name']}\n\n"
+                    f"💌 **النص:**\n{item['text']}",
                     parse_mode="Markdown"
                 )
+                
+                # إرسال إشعار للمرسل الأساسي بأن همسته تم قراءتها
+                try:
+                    bot.send_message(
+                        item['sender_id'],
+                        f"👁️‍🗨️ تنبيه: قام العضو ({item['target_name']}) بقراءة همستك الموجهة له الآن بنجاح!"
+                    )
+                except:
+                    pass
             else:
-                bot.reply_to(message, "⚠️ عذراً، انتهت صلاحية هذه الهمسة أو تمت قراءتها مسبقاً.")
+                bot.reply_to(message, "⚠️ عذراً، هذه الهمسة غير موجودة أو انتهت صلاحيتها.")
             return
 
-    # الرسالة الترحيبية الافتراضية
+    # الرسالة الترحيبية العامة
     markup = InlineKeyboardMarkup()
     markup.add(InlineKeyboardButton("➕ اضفني لمجموعتك", url=f"https://t.me/{bot.get_me().username}?startgroup=true"))
     bot.reply_to(
@@ -56,25 +71,28 @@ def handle_start(message):
 def handle_private(message):
     user_id = message.from_user.id
     
-    if user_id in active_whispers and 'target_name' in active_whispers[user_id] and 'text' not in active_whispers[user_id]:
-        session = active_whispers[user_id]
+    # 2. استقبال نص الهمسة في الخاص بعد الضغط على الرابط
+    if user_id in database and database[user_id].get('step') == 'waiting_for_text':
+        session = database[user_id]
         whisper_text = message.text.strip()
         
-        # حفظ نص الهمسة واسم المرسل
-        w_id = f"{user_id}_{message.message_id}"
-        active_whispers[w_id] = {
+        # إنشاء معرف فريد لهذه الهمسة
+        w_id = f"w_{user_id}_{message.message_id}"
+        
+        database[w_id] = {
             'text': whisper_text,
+            'sender_id': user_id,
             'sender_name': message.from_user.first_name,
             'target_name': session['target_name']
         }
         
-        # إنشاء الأزرار الموجودة في الصورة المطلوبة (رؤية الهمسة + اهمس مباشرة)
+        # تجهيز الأزرار تحت الهمسة في المجموعة
         markup = InlineKeyboardMarkup()
         bot_user = bot.get_me().username
         markup.add(InlineKeyboardButton("رؤية الهمسة 🔒", url=f"https://t.me/{bot_user}?start=read_{w_id}"))
         markup.add(InlineKeyboardButton(f"اهمس لـ {session['target_name']} مباشرة 💬", url=f"https://t.me/{bot_user}?start=whisper_{session['target_name']}"))
         
-        # إرسال الهمسة للمجموعة بالصيغة تماماً كما في الصورة
+        # إرسال الهمسة للمجموعة
         bot.send_message(
             session['chat_id'],
             f"• الهمسه لـ ⟵ {session['target_name']}\n• من ⟵ {message.from_user.first_name}\n-",
@@ -82,11 +100,11 @@ def handle_private(message):
             parse_mode="Markdown"
         )
         
-        # تأكيد الإرسال في الخاص
+        # تأكيد الإرسال للمستخدم في الخاص
         bot.reply_to(message, "• تم ارسال همستك إلى المجموعة بنجاح ✨")
         
-        # تنظيف الجلسة المؤقتة
-        del active_whispers[user_id]
+        # حذف حالة الانتظار المؤقتة لهذا المستخدم
+        del database[user_id]
     else:
         bot.reply_to(message, "✨ أهلاً بك! استخدم الرمز (هـ) بالرد على أي شخص داخل المجموعة للبدء بالهمس.")
 
