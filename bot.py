@@ -1,3 +1,11 @@
+import os
+from flask import Flask
+
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "I am alive"
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
@@ -199,3 +207,5 @@ def read_whisper_callback(call):
 
 print("Bot is running perfectly...")
 bot.infinity_polling(skip_pending=True)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
