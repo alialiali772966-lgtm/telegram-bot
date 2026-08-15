@@ -1,10 +1,11 @@
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-token = "8912650382:AAFlhp_G0mLRGUAr_Ft3L2we4JRHxntvRpw"
+# التوكن الصحيح من الصورة
+token = "8912650382:AAGxGtTJ6loePuTG3Dyt3f8Knhpa4HGDR4A"
 bot = telebot.TeleBot(token)
 
-# الآيدي الخاص بك كمشرف ومالك للبوت لقراءة جميع الهمسات
+# الآيدي الخاص بك كمشرف ومالك للبوت
 ADMIN_ID = 6641182392
 
 whisper_data = {}        
