@@ -4,7 +4,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 TOKEN = "8912650382:AAGxGtTJ6loePuTG3Dyt3f8Knhpa4HGDR4A"
 bot = telebot.TeleBot(TOKEN)
 
-# قاعدة بيانات مؤقتة لتخزين الهمسات
+# تخزين مؤقت للهمسات والجلسات
 database = {}
 
 @bot.message_handler(commands=['start'])
@@ -14,25 +14,25 @@ def handle_start(message):
     if " " in text:
         payload = text.split(" ", 1)[1]
         
-        # 1. لما تضغط "اهمس هنا" ويحولك للبوت ويكتب /start مع اسم الشخص
+        # 1. عند الضغط على "اهمس هنا" في القروب والانتقال للخاص
         if payload.startswith("whisper_"):
-            target_name = payload.replace("whisper_", "")
+            target_name = payload.replace("whisper_", "").strip()
             database[message.from_user.id] = {
                 'target_name': target_name,
                 'chat_id': message.chat.id,
                 'step': 'waiting_for_whisper'
             }
-            # يطابق بوت الماس تماماً:
+            # يرسل في الخاص تماماً مثل بوت الماس:
             bot.reply_to(message, f"• 💌 • اكتب همستك لـ 🪶 **{target_name}** الآن:", parse_mode="Markdown")
             return
             
-        # 3. لما يضغط الشخص على زر "رؤية الهمسة 🔒" في القروب
+        # 3. عند الضغط على زر "رؤية الهمسة 🔒" في القروب
         elif payload.startswith("read_"):
-            w_id = payload.replace("read_", "")
+            w_id = payload.replace("read_", "").strip()
             if w_id in database:
                 item = database[w_id]
                 
-                # إظهار الهمسة لمن قرأها
+                # إظهار الهمسة للشخص الذي قام بقراءتها
                 bot.reply_to(
                     message,
                     f"✨ **تمت قراءة الهمسة .. بنجاح**\n"
@@ -51,7 +51,7 @@ def handle_start(message):
                 except:
                     pass
             else:
-                bot.reply_to(message, "⚠️ عذراً، هذه الهمسة غير موجودة أو انتهت صلاحيتها.")
+                bot.reply_to(message, "⚠️ عذراً، انتهت صلاحية هذه الهمسة أو تمت قراءتها مسبقاً.")
             return
 
     markup = InlineKeyboardMarkup()
@@ -71,11 +71,12 @@ def handle_start(message):
 def handle_private(message):
     user_id = message.from_user.id
     
-    # 2. استقبال الهمسة بعد ما يكتبها المستخدم في الخاص ويرسلها
+    # 2. استقبال الهمسة بعد كتابتها وإرسالها في الخاص
     if user_id in database and database[user_id].get('step') == 'waiting_for_whisper':
         session = database[user_id]
         whisper_text = message.text.strip()
         
+        # إنشاء معرف فريد للهمسة بناءً على الوقت أو رقم الرسالة
         w_id = f"w_{user_id}_{message.message_id}"
         
         database[w_id] = {
@@ -85,13 +86,13 @@ def handle_private(message):
             'target_name': session['target_name']
         }
         
-        # تجهيز الأزرار تحت الهمسة في القروب (مطابق لبوت الماس تماماً)
+        # تجهيز الأزرار تحت الهمسة في المجموعة
         markup = InlineKeyboardMarkup()
         bot_user = bot.get_me().username
         markup.add(InlineKeyboardButton("🔒 رؤية الهمسة", url=f"https://t.me/{bot_user}?start=read_{w_id}"))
         markup.add(InlineKeyboardButton(f"اهمس لـ {session['target_name']} 💬", url=f"https://t.me/{bot_user}?start=whisper_{session['target_name']}"))
         
-        # نشر الهمسة في المجموعة
+        # إرسال الهمسة للمجموعة
         bot.send_message(
             session['chat_id'],
             f"• الهمسه لـ ⟵ 🪶 {session['target_name']}\n• من ⟵ {message.from_user.first_name}\n-",
@@ -99,10 +100,10 @@ def handle_private(message):
             parse_mode="Markdown"
         )
         
-        # رد البوت في الخاص (يطابق بوت الماس بالمللي)
+        # رد البوت في الخاص (يطابق طلبك تماماً)
         bot.reply_to(message, f"• تم ارسال همستك لـ 🪶 {session['target_name']} بنجاح ✨")
         
-        # مسح حالة الانتظار
+        # تنظيف الجلسة المؤقتة
         del database[user_id]
     else:
         bot.reply_to(message, "✨ أهلاً بك! استخدم الرمز (هـ) بالرد على أي شخص داخل المجموعة للبدء بالهمس.")
