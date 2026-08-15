@@ -1,9 +1,8 @@
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-# ضع توكن بوتك هنا أو تأكد أنه مربوط بمتغيرات البيئة
+# توكن البوت الخاص بك
 TOKEN = "8912650382:AAFlhp_GOmLRGuAr_Ft3L2we4JRHxntvRpw"
-
 bot = telebot.TeleBot(TOKEN)
 
 # قواميس لحفظ بيانات الهمسات المؤقتة
@@ -27,11 +26,9 @@ def send_welcome(message):
                     return
                 
                 # البحث عن الهمسة بناءً على معرف المرسل والمستقبل
-                found_key = None
                 found_whisper = None
                 for w_id, w_data in active_whispers.items():
                     if w_data['target_id'] == target_id and not w_data['read_status']:
-                        found_key = w_id
                         found_whisper = w_data
                         break
                 
@@ -46,7 +43,7 @@ def send_welcome(message):
                         parse_mode="Markdown"
                     )
                 else:
-                    bot.send_message(message.chat.id, "⚠️عذراً، هذه الهمسة غير موجودة أو تم قراءتها مسبقاً.")
+                    bot.send_message(message.chat.id, "⚠️ عذراً، هذه الهمسة غير موجودة أو تم قراءتها مسبقاً.")
                 return
             except Exception as e:
                 bot.send_message(message.chat.id, "❌ حدث خطأ أثناء فتح الهمسة.")
