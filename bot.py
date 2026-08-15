@@ -2,7 +2,8 @@ import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # ضع توكن بوتك هنا أو تأكد أنه مربوط بمتغيرات البيئة
-TOKEN = "رقم_التوكن_هنا"
+TOKEN = "8912650382:AAFlhp_GOmLRGuAr_Ft3L2we4JRHxntvRpw"
+
 bot = telebot.TeleBot(TOKEN)
 
 # قواميس لحفظ بيانات الهمسات المؤقتة
