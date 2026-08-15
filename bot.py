@@ -2,7 +2,7 @@ import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # توكن البوت الخاص بك
-TOKEN = "8912650382:AAFlhp_GOmLRGuAr_Ft3L2we4JRHxntvRpw"
+TOKEN = "8912650382:AAGxGtTJ6loePuTG3Dyt3f8Knhpa4HGDR4A"
 bot = telebot.TeleBot(TOKEN)
 
 # قواميس لحفظ بيانات الهمسات المؤقتة
