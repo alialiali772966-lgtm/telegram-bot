@@ -4,7 +4,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 TOKEN = "8912650382:AAGxGtTJ6loePuTG3Dyt3f8Knhpa4HGDR4A"
 bot = telebot.TeleBot(TOKEN)
 
-# تخزين مؤقت للهمسات
+# قواميس لحفظ بيانات الهمسات
 whisper_data = {}
 active_whispers = {}
 
@@ -16,15 +16,6 @@ def send_welcome(message):
         if param.startswith("whisper_"):
             try:
                 whisper_id = param.replace("whisper_", "")
-                sender_id_str, target_id_str = whisper_id.split("_")
-                target_id = int(target_id_str)
-                sender_id = message.from_user.id
-                
-                # التحقق أن الشخص الذي فتح الهمسة هو المستهدف أو المرسل
-                if sender_id != target_id and str(sender_id) != sender_id_str:
-                    bot.send_message(message.chat.id, "❌ عذراً، هذه الهمسة ليست موجهة لك!")
-                    return
-                
                 found_whisper = active_whispers.get(whisper_id)
                 
                 if found_whisper and not found_whisper['read_status']:
@@ -34,7 +25,12 @@ def send_welcome(message):
                     
                     bot.send_message(
                         message.chat.id,
-                        f"📬 **وصلتك همسة جديدة!**\n\n👤 من: {sender_name}\n💬 النص:\n{whisper_content}",
+                        f"• تمت قراءة الهمسة .. بنجاح\n• بواسطة العضو المطلوب ✨\n- من قبل ← {sender_name}♡",
+                        parse_mode="Markdown"
+                    )
+                    bot.send_message(
+                        message.chat.id,
+                        f"💌 **النص:**\n{whisper_content}",
                         parse_mode="Markdown"
                     )
                 else:
@@ -44,7 +40,20 @@ def send_welcome(message):
                 bot.send_message(message.chat.id, "❌ حدث خطأ أثناء فتح الهمسة.")
                 return
 
-    bot.send_message(message.chat.id, "✨ أهلاً بك في بوت رينكس للهمسات يعمل بكفاءة.")
+    # الرسالة الترحيبية الاحترافية مثل الصورة الأولى
+    markup = InlineKeyboardMarkup()
+    markup.add(InlineKeyboardButton("➕ اضفني لمجموعتك", url=f"https://t.me/{bot.get_me().username}?startgroup=true"))
+    
+    bot.send_message(
+        message.chat.id,
+        "✨ **أهلاً بك في بوت الهمسات الذكي**\n\n"
+        "🛡️ • يمكنك من خلالي إرسال همسات سرية وآمنة داخل المجموعات لأي عضو بالرد على رسالته.\n\n"
+        "💡 • **طريقة الاستخدام:**\n"
+        "• رد على رسالة أي شخص في المجموعة بكلمة (همس) أو حرف (هـ)\n"
+        "• اضغط على زر (اهمس هنا) المظهر واكتب همستك بكل سرية!",
+        reply_markup=markup,
+        parse_mode="Markdown"
+    )
 
 @bot.message_handler(func=lambda message: message.chat.type == 'private')
 def handle_private_messages(message):
@@ -60,7 +69,7 @@ def handle_private_messages(message):
         target_id = target_info['target_id']
         chat_id = target_info['group_chat_id']
         
-        whisper_id = f"{user_id}_{target_id}"
+        whisper_id = f"{user_id}_{target_id}_{message.message_id}"
         active_whispers[whisper_id] = {
             'text': whisper_text,
             'sender_name': message.from_user.first_name,
@@ -76,15 +85,15 @@ def handle_private_messages(message):
         
         bot.send_message(
             chat_id,
-            f"• الهمسه لـ ⟵ {target_mention}\n• من ⟵ {message.from_user.first_name}\n-",
+            f"• تم تحديد الهمسه لـ ⟵ {target_mention}\n• من ⟵ {message.from_user.first_name}\n-",
             reply_markup=markup,
             parse_mode="Markdown"
         )
         
-        bot.send_message(message.chat.id, "✅ تم إرسال همستك بنجاح إلى المجموعة!")
+        bot.send_message(message.chat.id, f"✨ • تم ارسال همستك إلى المجموعة بنجاح!")
         del whisper_data[user_id]
     else:
-        bot.send_message(message.chat.id, "الرجاء الرد بكلمة (هـ) على الشخص في المجموعة أولاً.")
+        bot.send_message(message.chat.id, "الرجاء الرد بكلمة (هـ) على الشخص في المجموعة أولاً لتحديد الهمسة.")
 
 @bot.message_handler(func=lambda message: message.chat.type != 'private')
 def handle_group_messages(message):
@@ -96,7 +105,6 @@ def handle_group_messages(message):
         return
 
     clean_text = text.strip()
-    # هنا الشرط صار دقيق:只要 تكتب (هـ) أو (ه) أو (همس) راح يشتغل فوراً
     if clean_text not in ["هـ", "ه", "همس", "اهمس"]:
         return
 
@@ -118,15 +126,20 @@ def handle_group_messages(message):
     
     markup = InlineKeyboardMarkup()
     bot_username = bot.get_me().username
-    markup.add(InlineKeyboardButton("🛡️ اهمس هنا", url=f"https://t.me/{bot_username}?start=whisper_{user_id}_{target_user_id}"))
+    markup.add(InlineKeyboardButton("اهمس هنا ↗️", url=f"https://t.me/{bot_username}?start=whisper_ready"))
     
     target_mention = f"[{target_user_name}](tg://user?id={target_user_id})"
     
     bot.reply_to(
         message,
-        f"• تم تحديد الهمسة لـ ⟵ {target_mention}\n• اضغط الزر لكتابة الهمسة في الخاص:",
+        f"• تم تحديد الهمسه لـ ⟵ {target_mention}\n• اضغط الزر لكتابة الهمسة في الخاص",
         reply_markup=markup,
         parse_mode="Markdown"
     )
+    # إرسال رسالة توجيهية للخاص بالطلب
+    try:
+        bot.send_message(user_id, f"💌 • اكتب همستك لـ **{target_user_name}** الآن:", parse_mode="Markdown")
+    except:
+        pass
 
 bot.infinity_polling()
