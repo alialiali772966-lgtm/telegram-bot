@@ -1,91 +1,3 @@
-import telebot
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-
-TOKEN = "8912650382:AAGxGtTJ6loePuTG3Dyt3f8Knhpa4HGDR4A"
-bot = telebot.TeleBot(TOKEN)
-
-# تخزين مؤقت للهمسات
-whisper_data = {}
-active_whispers = {}
-
-@bot.message_handler(commands=['start'])
-def send_welcome(message):
-    text = message.text
-    if len(text.split()) > 1:
-        param = text.split()[1]
-        if param.startswith("whisper_"):
-            try:
-                whisper_id = param.replace("whisper_", "")
-                sender_id_str, target_id_str = whisper_id.split("_")
-                target_id = int(target_id_str)
-                sender_id = message.from_user.id
-                
-                # التحقق أن الشخص الذي فتح الهمسة هو المستهدف أو المرسل
-                if sender_id != target_id and str(sender_id) != sender_id_str:
-                    bot.send_message(message.chat.id, "❌ عذراً، هذه الهمسة ليست موجهة لك!")
-                    return
-                
-                found_whisper = active_whispers.get(whisper_id)
-                
-                if found_whisper and not found_whisper['read_status']:
-                    found_whisper['read_status'] = True
-                    sender_name = found_whisper['sender_name']
-                    whisper_content = found_whisper['text']
-                    
-                    bot.send_message(
-                        message.chat.id,
-                        f"📬 **وصلتك همسة جديدة!**\n\n👤 من: {sender_name}\n💬 النص:\n{whisper_content}",
-                        parse_mode="Markdown"
-                    )
-                else:
-                    bot.send_message(message.chat.id, "⚠️ عذراً، هذه الهمسة غير موجودة أو تم قراءتها مسبقاً.")
-                return
-            except Exception as e:
-                bot.send_message(message.chat.id, "❌ حدث خطأ أثناء فتح الهمسة.")
-                return
-
-    bot.send_message(message.chat.id, "✨ أهلاً بك في بوت رينكس للهمسات يعمل بكفاءة.")
-
-@bot.message_handler(func=lambda message: message.chat.type == 'private')
-def handle_private_messages(message):
-    user_id = message.from_user.id
-    text = message.text
-
-    if not text or text.startswith('/'):
-        return
-
-    target_info = whisper_data.get(user_id)
-    if target_info:
-        whisper_text = text.strip()
-        target_id = target_info['target_id']
-        chat_id = target_info['group_chat_id']
-        
-        whisper_id = f"{user_id}_{target_id}"
-        active_whispers[whisper_id] = {
-            'text': whisper_text,
-            'sender_name': message.from_user.first_name,
-            'target_id': target_id,
-            'read_status': False
-        }
-        
-        markup = InlineKeyboardMarkup()
-        bot_username = bot.get_me().username
-        markup.add(InlineKeyboardButton("👁️ اضغط هنا لقراءة الهمسة", url=f"https://t.me/{bot_username}?start=whisper_{whisper_id}"))
-        
-        target_mention = f"[{target_info['target_name']}](tg://user?id={target_id})"
-        
-        bot.send_message(
-            chat_id,
-            f"• الهمسه لـ ⟵ {target_mention}\n• من ⟵ {message.from_user.first_name}\n-",
-            reply_markup=markup,
-            parse_mode="Markdown"
-        )
-        
-        bot.send_message(message.chat.id, "✅ تم إرسال همستك بنجاح إلى المجموعة!")
-        del whisper_data[user_id]
-    else:
-        bot.send_message(message.chat.id, "الرجاء الرد بكلمة (هـ) على الشخص في المجموعة أولاً.")
-
 @bot.message_handler(func=lambda message: message.chat.type != 'private')
 def handle_group_messages(message):
     chat_id = message.chat.id
@@ -96,6 +8,7 @@ def handle_group_messages(message):
         return
 
     clean_text = text.strip()
+    # هنا الشرط صار دقيق:只要 تكتب (هـ) أو (ه) أو (همس) راح يشتغل فوراً
     if clean_text not in ["هـ", "ه", "همس", "اهمس"]:
         return
 
@@ -117,15 +30,13 @@ def handle_group_messages(message):
     
     markup = InlineKeyboardMarkup()
     bot_username = bot.get_me().username
-    markup.add(InlineKeyboardButton("🛡️ اهمس هنا", url=f"https://t.me/{bot_username}?start=whisper_{user_id}_{target_user_id}"))
+    markup.add(InlineKeyboardButton("🛡️ اهمس هنا", url=f"https://t.me/{bot_username}?start=whisper_{target_user_id}_{chat_id}"))
     
     target_mention = f"[{target_user_name}](tg://user?id={target_user_id})"
     
     bot.reply_to(
         message,
-        f"• تم تحديد الهمسه لـ ⟵ {target_mention}\n• اضغط الزر لكتابة الهمسة في الخاص",
+        f"• تم تحديد الهمسة لـ ⟵ {target_mention}\n• اضغط الزر لكتابة الهمسة في الخاص:",
         reply_markup=markup,
         parse_mode="Markdown"
     )
-
-bot.infinity_polling()
